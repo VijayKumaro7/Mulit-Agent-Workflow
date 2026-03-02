@@ -1,253 +1,210 @@
-# Multi-Agent Workflow System 
+# 🤖 Multi-Agent Workflow System
 
-## 📋 Overview
+> **300-Character Description:**  
+> Multi-agent orchestration system using LangGraph & LangChain. A Planner, Executor, Web Researcher, Chart Generator & Synthesizer collaborate via shared state to answer complex queries with real-time data and auto-generated visualizations.
 
-This notebook implements a sophisticated multi-agent workflow system using LangGraph and LangChain. The system orchestrates multiple specialized AI agents to perform web research, data analysis, chart generation, and answer synthesis - all working together to provide comprehensive responses to user queries.
+---
 
-## 🎯 Key Features
+## 📌 Overview
 
-- **Multi-Agent Architecture**: Modular system with specialized agents for different tasks
-- **Dynamic Planning**: Automatic generation and execution of step-by-step plans
-- **Web Research**: Real-time information gathering using Tavily API
-- **Data Visualization**: Automatic chart generation from extracted data
-- **Intelligent Synthesis**: Comprehensive answer generation from multiple sources
-- **Error Resilience**: Built-in fallbacks and mock data for testing
+This project implements a **multi-agent orchestration system** that breaks complex user queries into structured execution plans and delegates tasks to specialized AI agents. Each agent has a distinct role — from fetching live web data to generating charts — and they collaborate through a shared state managed by **LangGraph**.
 
-## 🏗️ Architecture
+---
 
-### Agents in the System
-
-1. **Planner Agent** 🎯
-   - Creates step-by-step execution plans
-   - Assigns tasks to appropriate agents
-   - Supports replanning if steps fail
-
-2. **Executor Agent** 🎮
-   - Orchestrates workflow execution
-   - Routes tasks to appropriate agents
-   - Manages state transitions
-
-3. **Web Researcher Agent** 🔍
-   - Performs web searches using Tavily API
-   - Extracts relevant information
-   - Formats search results for processing
-
-4. **Chart Generator Agent** 📊
-   - Creates data visualizations
-   - Extracts numerical data from text
-   - Generates professional charts with matplotlib
-
-5. **Chart Summarizer Agent** 📝
-   - Analyzes generated charts
-   - Extracts key insights
-   - Provides concise summaries
-
-6. **Synthesizer Agent** 🎨
-   - Combines all gathered information
-   - Creates comprehensive final answers
-   - Ensures response relevance to user query
-
-## 📦 Requirements
-
-### Python Packages
+## 🏗️ Project Structure
 ```
-python-dotenv==1.2.1
-langchain==0.2.0
-langchain-openai==0.1.7
-langchain-community==0.2.0
-tavily-python==0.5.0
-langgraph==0.1.0
-matplotlib==3.9.2
-pandas==2.2.3
-seaborn==0.13.2
+multi-agent-workflow/
+│
+├── Multi Agent workflow.ipynb   # Main notebook — agents & graph execution
+├── requirements.txt             # Pinned Python dependencies
+├── README.md                    # Project documentation
+└── .env                         # API keys (not committed to git)
 ```
 
-### API Keys Required
-- **OpenAI API Key**: For LLM operations (GPT-4)
-- **Tavily API Key**: For web search capabilities
+---
 
-## 🚀 Quick Start
+## 🧠 System Architecture
 
-### 1. Environment Setup
+The system follows a **Plan → Execute → Specialize → Synthesize** pattern:
+```
+User Query
+    │
+    ▼
+┌─────────┐
+│ Planner │  ── Generates a step-by-step JSON execution plan
+└────┬────┘
+     ▼
+┌──────────┐
+│ Executor │  ── Routes each step to the correct agent
+└────┬─────┘
+     ├─────────────────────────────────┐
+     ▼                                 ▼
+┌───────────────┐           ┌──────────────────┐
+│ Web Researcher│           │ Chart Generator  │
+│ (Tavily API)  │           │ (Matplotlib)     │
+└───────┬───────┘           └────────┬─────────┘
+        │                            │
+        │                  ┌──────────────────┐
+        │                  │ Chart Summarizer │
+        │                  └────────┬─────────┘
+        └──────────┬────────────────┘
+                   ▼
+          ┌─────────────┐
+          │ Synthesizer │  ── Combines all outputs → Final Answer
+          └─────────────┘
+```
 
-Create a `.env` file in the notebook directory:
+---
 
+## 🤖 Agent Descriptions
+
+| Agent | Role | Technology |
+|-------|------|------------|
+| **Planner** | Parses user query and generates a structured JSON plan with numbered steps and agent assignments | GPT-4o-mini |
+| **Executor** | Reads the plan, routes each step to the right agent, manages `current_step` in state | LangGraph `Command` |
+| **Web Researcher** | Performs live web searches and returns formatted results with source URLs | Tavily Search API |
+| **Chart Generator** | Extracts numerical data from agent messages and renders a labeled bar chart | Matplotlib |
+| **Chart Summarizer** | Reads chart output and produces 2–3 sentence key insights | GPT-4o-mini |
+| **Synthesizer** | Aggregates all agent outputs into one coherent final answer | GPT-4o-mini |
+
+---
+
+## 🗂️ State Management
+
+All agents communicate through a **shared State object** — no direct agent-to-agent coupling:
+```python
+class State(MessagesState):
+    user_query: str           # The original user question
+    enabled_agents: List[str] # Agents active for this query
+    plan: List[Dict]          # Ordered execution steps
+    current_step: int         # Tracks which step is currently running
+    agent_query: str          # Task instruction for the current agent
+    last_reason: str          # Executor's reasoning for routing decision
+    replan_flag: bool         # Triggers planner to revise the plan
+    replan_attempts: Dict     # Replanning count tracked per step
+    final_answer: str         # Final synthesized response
+```
+
+> `State` inherits from `MessagesState`, which adds a shared `messages` list visible to all agents.
+
+---
+
+## 📦 Installation
 ```bash
-# .env file
+# 1. Clone the repository
+git clone <repo-url>
+cd multi-agent-workflow
+
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate       # macOS / Linux
+venv\Scripts\activate          # Windows
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Set up API keys
+# Create a .env file in the project root:
 OPENAI_API_KEY=your-openai-api-key-here
 TAVILY_API_KEY=your-tavily-api-key-here
 ```
 
-### 2. Install Dependencies
+---
 
-Run the first cell to install all required packages:
+## 🚀 Usage
 
-```python
-%pip install -q python-dotenv
-%pip install -q langchain==0.2.0
-%pip install -q langchain-openai==0.1.7
-# ... (all other dependencies)
-```
+Run notebook cells sequentially. Two example queries are included:
 
-### 3. Run the Notebook
-
-Execute cells sequentially to:
-1. Initialize the state system
-2. Define agent nodes
-3. Build the workflow graph
-4. Execute queries
-
-## 💡 Usage Examples
-
-### Example 1: Financial Data Visualization
+### Example 1 — Data Visualization
 ```python
 query = "Chart the current market capitalization of the top 5 banks in the US?"
 state = {
     "messages": [HumanMessage(content=query)],
     "user_query": query,
-    "enabled_agents": ["web_researcher", "chart_generator", 
-                       "chart_summarizer", "synthesizer"],
+    "enabled_agents": ["web_researcher", "chart_generator", "chart_summarizer", "synthesizer"],
 }
 result = graph.invoke(state)
+print(result["final_answer"])
 ```
 
-### Example 2: Regulatory Research
+### Example 2 — Regulatory Research
 ```python
 query = "Identify current regulatory changes for the financial services industry in the US."
 state = {
     "messages": [HumanMessage(content=query)],
     "user_query": query,
-    "enabled_agents": ["web_researcher", "chart_generator", 
-                       "chart_summarizer", "synthesizer"],
+    "enabled_agents": ["web_researcher", "chart_generator", "chart_summarizer", "synthesizer"],
 }
 result = graph.invoke(state)
+print(result["final_answer"])
 ```
 
-## 🔄 Workflow Process
-
-```mermaid
-graph TD
-    A[User Query] --> B[Planner]
-    B --> C[Executor]
-    C --> D{Route to Agent}
-    D --> E[Web Researcher]
-    D --> F[Chart Generator]
-    D --> G[Chart Summarizer]
-    E --> C
-    F --> G
-    G --> C
-    C --> H{More Steps?}
-    H -->|Yes| D
-    H -->|No| I[Synthesizer]
-    I --> J[Final Answer]
-```
-
-## 🎚️ State Management
-
-The system uses a shared state that includes:
-
-```python
-class State(MessagesState):
-    user_query: str           # Original user question
-    enabled_agents: List[str] # Active agents for this query
-    plan: List[Dict]          # Execution plan steps
-    current_step: int         # Current execution position
-    agent_query: str          # Current task instruction
-    last_reason: str          # Execution decision reasoning
-    replan_flag: bool         # Trigger for replanning
-    replan_attempts: Dict     # Tracking replan attempts
-    final_answer: str         # Synthesized final response
-```
-
-## 🛠️ Customization
-
-### Modifying Agents
-
-You can customize agent behavior by modifying their node functions:
-
-```python
-def custom_agent_node(state: State) -> Command:
-    # Your custom logic here
-    return Command(
-        update={"messages": [HumanMessage(content=result)]},
-        goto="next_agent"
-    )
-```
-
-### Adding New Agents
-
-1. Create a new node function
-2. Add it to the workflow
-3. Include it in the `enabled_agents` list
-
-```python
-workflow.add_node("custom_agent", custom_agent_node)
-```
-
-## 🔍 Debugging
-
-### Enable Verbose Logging
-The notebook includes print statements for tracking execution:
-- Planner decisions
-- Executor routing
-- Agent actions
-- Final synthesis
-
-### Mock Data Mode
-The system includes mock data fallbacks for testing without API keys:
-- Mock search results for web researcher
-- Default chart data for visualization
-- Sample responses for testing workflow
-
-## ⚠️ Common Issues & Solutions
-
-### Issue: API Key Errors
-**Solution**: Ensure your `.env` file is in the correct location and contains valid keys
-
-### Issue: Chart Generation Fails
-**Solution**: The system will use default data if extraction fails - check data format in messages
-
-### Issue: Tavily Search Errors
-**Solution**: Mock data will be used automatically; check API key and rate limits
-
-### Issue: Graph Visualization Error
-**Solution**: The notebook will display available nodes if visualization fails
-
-## 📊 Performance Notes
-
-- **Execution Time**: Queries typically take 2-5 minutes
-- **API Calls**: Each query may make multiple LLM and search API calls
-- **Rate Limits**: Be aware of OpenAI and Tavily API rate limits
-
-## 🤝 Contributing
-
-To improve this notebook:
-1. Test with various query types
-2. Add new specialized agents
-3. Enhance error handling
-4. Optimize prompt engineering
-5. Add more visualization options
-
-## 📄 License
-
-This notebook is part of an educational course on multi-agent systems with LangChain and LangGraph.
-
-## 📚 Additional Resources
-
-- [LangChain Documentation](https://docs.langchain.com/)
-- [LangGraph Documentation](https://github.com/langchain-ai/langgraph)
-- [Tavily API Documentation](https://tavily.com/docs)
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-
-## 🆘 Support
-
-For issues or questions:
-1. Check the error messages in notebook output
-2. Verify API keys are correctly set
-3. Ensure all dependencies are installed
-4. Try with mock data first to test workflow
-5. Review the FIXES_SUMMARY.md for recent updates
+> ⏳ Queries typically take **2–5 minutes** due to chained LLM + API calls.
 
 ---
 
-**Note**: This is an educational implementation demonstrating multi-agent orchestration concepts. Production deployments should include additional error handling, security measures, and optimization.
+## ⚙️ Adding a Custom Agent
+```python
+# Step 1 — Define the node function
+def my_custom_agent(state: State) -> Command:
+    result = do_something(state.get("agent_query", ""))
+    return Command(
+        update={"messages": [HumanMessage(content=result, name="my_agent")]},
+        goto="executor"
+    )
+
+# Step 2 — Register in the graph
+workflow.add_node("my_agent", my_custom_agent)
+
+# Step 3 — Include in enabled_agents when running
+"enabled_agents": ["web_researcher", "my_agent", "synthesizer"]
+```
+
+---
+
+## 🛡️ Error Handling & Fallbacks
+
+| Scenario | Fallback Behavior |
+|----------|-------------------|
+| Tavily API key missing | Uses mock data for 5 major US banks |
+| LLM returns invalid JSON plan | Falls back to a default 2-step plan |
+| Chart data extraction fails | Uses hardcoded default bank values |
+| Graph PNG visualization fails | Prints list of registered node names |
+
+---
+
+## ⚠️ Known Limitations
+
+- **Non-deterministic routing** — Planner may skip chart generation and go directly to Synthesizer; this is expected LLM behavior
+- **`langgraph==0.1.0` unavailable on PyPI** — Use `langgraph>=0.2.x`; fully compatible with this codebase
+- **API rate limits** — Each query chains multiple OpenAI + Tavily calls; monitor usage on heavy workloads
+
+---
+
+## 📚 Tech Stack
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| `langchain` | 0.2.0 | Core agent & chain framework |
+| `langchain-openai` | 0.1.7 | GPT-4o-mini LLM integration |
+| `langchain-community` | 0.2.0 | Tavily search tool integration |
+| `langgraph` | 0.1.0+ | Agent graph orchestration |
+| `tavily-python` | 0.5.0 | Real-time web search |
+| `matplotlib` | 3.9.2 | Chart generation |
+| `pandas` | 2.2.3 | Data manipulation |
+| `seaborn` | 0.13.2 | Enhanced plot styling |
+
+---
+
+## 📄 License
+
+Educational implementation — part of a multi-agent systems course on LangChain and LangGraph. Free to use and adapt for learning purposes.
+
+---
+
+## 📚 Resources
+
+- [LangGraph Docs](https://github.com/langchain-ai/langgraph)
+- [LangChain Docs](https://docs.langchain.com/)
+- [Tavily API](https://tavily.com/docs)
+- [OpenAI API](https://platform.openai.com/docs)
